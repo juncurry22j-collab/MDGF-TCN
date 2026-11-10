@@ -1,12 +1,16 @@
 # MDGF-TCN
 
+**Current version** — `v1.0.0`.
+
 MDGF-TCN classifies candidate regions in electrical borehole images as lamination or non-lamination. It combines a multiscale directional ResNet18 image encoder, gated fusion of image and region attributes, and a depth-context temporal convolutional network.
 
 The C2 and C3 model definitions are extracted from the study's `lamination_tabm_labelid_randomsplit.ipynb`. The demo notebook is a short, offline example of these definitions. See [the input and experiment guide](docs/experiments.md) for the two training workflows and their data requirements.
 
 ## Installation
 
-The study used Python 3.10.20, PyTorch 1.13.1, torchvision 0.14.1, and CUDA 11.7 on Windows with an NVIDIA GeForce GTX 1650 Ti (4 GB). This is the recorded setup, not a minimum hardware specification. The demo also runs on CPU.
+The reference software environment uses Python 3.10.20, PyTorch 1.13.1, torchvision 0.14.1, and CUDA 11.7 on Windows. The demo also runs on CPU.
+
+**Hardware for future retraining** — A Windows workstation equipped with an NVIDIA GeForce RTX 4070 GPU with 12 GB of video memory. The archived retraining logs record an NVIDIA GeForce GTX 1650 Ti GPU with 4 GB of video memory.
 
 From the repository directory, install the PyTorch and torchvision wheels for your platform. The commands below use the study versions with CPU wheels.
 
