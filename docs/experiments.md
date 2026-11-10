@@ -1,5 +1,7 @@
 # Inputs and experiments
 
+This guide applies to MDGF-TCN `v1.0.0`.
+
 ## Prepared inputs
 
 Place the following files in a local directory. Keep all files in the same row order.

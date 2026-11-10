@@ -1,3 +1,4 @@
+# Local environments and generated artifacts for MDGF-TCN v1.0.0
 __pycache__/
 *.py[cod]
 .venv/
