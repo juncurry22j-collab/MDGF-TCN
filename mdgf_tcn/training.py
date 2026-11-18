@@ -81,13 +81,14 @@ def train_context(emb, seq, aux, y, sp, folder, cfg, model_class, component='gpu
         return json.loads((folder / 'validation_record.json').read_text(encoding='utf8'))
     assert np.isfinite(emb[np.r_[sp['train'], sp['val']]]).all(), 'Non-finite encoder inputs: repair extraction before context training'
     dev = DEV
+    use_amp = USE_CUDA and cfg.get('mixed_precision', False)
     torch.set_num_threads(2)
     seed(cfg['seed'])
     template = model_class(dropout=cfg['dropout'])
     model = CenterOnly(template) if cfg.get('no_context') else template
     model.to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg['lr'], weight_decay=cfg['wd'])
-    scaler = torch.cuda.amp.GradScaler(enabled=USE_CUDA)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     X = {s: pin(torch.from_numpy(np.concatenate([emb[seq[sp[s]]], aux[sp[s]]], axis=-1).astype('float32'))) for s in ['train', 'val']}
     Y = torch.tensor(y[sp['train']], dtype=torch.float32, device=dev)
     sd = torch.tensor(emb[sp['train']].std(0), device=dev)
@@ -115,7 +116,7 @@ def train_context(emb, seq, aux, y, sp, folder, cfg, model_class, component='gpu
         out = []
         with torch.inference_mode():
             for j in range(0, len(x), 128):
-                with torch.cuda.amp.autocast(enabled=USE_CUDA):
+                with torch.cuda.amp.autocast(enabled=use_amp):
                     logit = model(x[j:j + 128].to(dev, non_blocking=True))
                 out.append(logit.float().sigmoid().cpu().numpy())
         return np.concatenate(out)
@@ -133,7 +134,7 @@ def train_context(emb, seq, aux, y, sp, folder, cfg, model_class, component='gpu
             if cfg.get('noise', 0):
                 xx[:, :, :768] += torch.randn_like(xx[:, :, :768]) * sd * cfg['noise']
             opt.zero_grad(set_to_none=True)
-            with torch.cuda.amp.autocast(enabled=USE_CUDA):
+            with torch.cuda.amp.autocast(enabled=use_amp):
                 logits = model(xx).float()
                 loss = nn.functional.binary_cross_entropy_with_logits(logits, yy, pos_weight=torch.tensor(cfg['pw'], device=dev))
             assert torch.isfinite(loss)
@@ -170,10 +171,10 @@ def train_context(emb, seq, aux, y, sp, folder, cfg, model_class, component='gpu
     return row
 
 
-def image_eval_forward(net, im, attributes=None, return_embedding=False):
+def image_eval_forward(net, im, attributes=None, return_embedding=False, use_amp=False):
     args = (im,) if attributes is None else (im, attributes)
     kw = {'return_embedding': True} if return_embedding else {}
-    with torch.cuda.amp.autocast(enabled=USE_CUDA):
+    with torch.cuda.amp.autocast(enabled=USE_CUDA and use_amp):
         out = net(*args, **kw)
     values = out if isinstance(out, tuple) else (out,)
     if not all((torch.isfinite(v).all() for v in values)):
@@ -238,6 +239,7 @@ def train_image(ns, cache, x, y, sp, folder, cfg):
     if (folder / 'image_record.json').exists():
         return json.loads((folder / 'image_record.json').read_text(encoding='utf8'))
     seed(cfg['seed'])
+    use_amp = USE_CUDA and cfg.get('mixed_precision', False)
     if cfg.get('variant') in ['no_gate', 'no_direction']:
         fullcfg = dict(cfg, variant='full')
         full = make_image_model(ns, fullcfg)
@@ -255,7 +257,7 @@ def train_image(ns, cache, x, y, sp, folder, cfg):
     other = [p for (n, p) in model.named_parameters() if not n.startswith('backbone.')]
     opt = torch.optim.AdamW([{'params': model.backbone.parameters(), 'lr': cfg['backbone_lr']}, {'params': other, 'lr': cfg['head_lr']}], weight_decay=cfg['wd'])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='max', factor=0.5, patience=2, min_lr=1e-06)
-    scaler = torch.cuda.amp.GradScaler(enabled=USE_CUDA)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
     best = -1.0
     wait = 0
     history = []
@@ -318,7 +320,7 @@ def train_image(ns, cache, x, y, sp, folder, cfg):
             im = batch_images(cache, ids, cfg.get('gain_aug', 0))
             yy = torch.tensor(y[ids], dtype=torch.float32, device=DEV)
             opt.zero_grad(set_to_none=True)
-            with torch.cuda.amp.autocast(enabled=USE_CUDA):
+            with torch.cuda.amp.autocast(enabled=use_amp):
                 logits = (model(im) if cfg.get('image_only') else model(im, attr[ids])).float()
                 loss = nn.functional.binary_cross_entropy_with_logits(logits, yy, pos_weight=torch.tensor(cfg['pw'], device=DEV))
             assert torch.isfinite(loss)

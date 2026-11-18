@@ -4,19 +4,24 @@
 
 MDGF-TCN classifies candidate regions in electrical borehole images as lamination or non-lamination. It combines a multiscale directional ResNet18 image encoder, gated fusion of image and region attributes, and a depth-context temporal convolutional network.
 
+The public training entry points use three-channel **360 × 360** region patches, consistent with the manuscript input configuration. Prepared patch files have shape `(N, 360, 360, 3)`; model inputs have shape `(N, 3, 360, 360)`. The four ResNet18 stages produce `64 × 90 × 90`, `128 × 45 × 45`, `256 × 23 × 23`, and `512 × 12 × 12` feature maps.
+
+The public training runners use full-precision (float32) computation by default for the 360 × 360 configuration. This setting is recorded in each run's configuration.
+
 The C2 and C3 model definitions are extracted from the study's `lamination_tabm_labelid_randomsplit.ipynb`. The demo notebook is a short, offline example of these definitions. See [the input and experiment guide](docs/experiments.md) for the two training workflows and their data requirements.
 
 ## Installation
 
-The reference software environment uses Python 3.10.20, PyTorch 1.13.1, torchvision 0.14.1, and CUDA 11.7 on Windows. The demo also runs on CPU.
+The reference software environment uses Python 3.10.20, PyTorch 1.13.1, torchvision 0.14.1, and CUDA 11.7 on Windows. Use Python 3.10 for the commands below. The demo also runs on CPU.
 
 **Hardware for future retraining** — A Windows workstation equipped with an NVIDIA GeForce RTX 4070 GPU with 12 GB of video memory. The archived retraining logs record an NVIDIA GeForce GTX 1650 Ti GPU with 4 GB of video memory.
 
 From the repository directory, install the PyTorch and torchvision wheels for your platform. The commands below use the study versions with CPU wheels.
 
 ```sh
-python -m pip install torch==1.13.1 torchvision==0.14.1 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m pip install torch==1.13.1 torchvision==0.14.1 --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
 ```
 
 For the study's CUDA setup, use the corresponding CUDA 11.7 wheels. Jupyter Notebook 7.6.0 is optional and is only needed to open the demo notebook.
@@ -27,7 +32,13 @@ For the study's CUDA setup, use the corresponding CUDA 11.7 wheels. Jupyter Note
 python -m mdgf_tcn.demo
 ```
 
-The demo generates eight synthetic candidate regions, runs C2 and C3, and prints the `(8, 768)` encoder output, the `(8, 15, 771)` sequence input, and eight lamination probabilities. These probabilities come from randomly initialized weights and are for checking the workflow.
+The demo generates eight synthetic candidate regions with input shape `(8, 3, 360, 360)`, runs C2 and C3, and prints the `(8, 768)` encoder output, the `(8, 15, 771)` sequence input, and eight lamination probabilities. These probabilities come from randomly initialized weights and are for checking the workflow.
+
+Run the input and model checks with:
+
+```sh
+python -m unittest discover -s tests -v
+```
 
 ## Experiments
 

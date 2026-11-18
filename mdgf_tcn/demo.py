@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .data import depth_neighborhoods
+from .data import PATCH_SIZE, depth_neighborhoods
 from .models import C2DirectionalResNet18Top96Fusion, C3DepthContextTCN
 
 
@@ -18,7 +18,7 @@ def run():
         "region_center_depth": np.linspace(0.0, 0.3, n),
     })
     sequence, extra = depth_neighborhoods(rows, {"demo": np.arange(n)})
-    patches = torch.rand(n, 3, 160, 160)
+    patches = torch.rand(n, 3, PATCH_SIZE, PATCH_SIZE)
     means = patches.new_tensor([0.485, 0.456, 0.406])[None, :, None, None]
     stds = patches.new_tensor([0.229, 0.224, 0.225])[None, :, None, None]
     attributes = torch.randn(n, 96)
@@ -30,6 +30,7 @@ def run():
         probabilities = c3(model_input).sigmoid()
     assert encoded.shape == (n, 768) and model_input.shape == (n, 15, 771)
     assert probabilities.shape == (n,) and torch.isfinite(probabilities).all()
+    print(f"Input patches {tuple(patches.shape)}")
     print(f"C2 encodings {tuple(encoded.shape)}")
     print(f"C3 inputs {tuple(model_input.shape)}")
     print("Synthetic probabilities:", probabilities.tolist())

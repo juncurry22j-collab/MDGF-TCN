@@ -25,9 +25,10 @@ ABLATIONS = {
 def settings(protocol, seed, backbone, positive_weight):
     c2 = dict(
         name="C2", experiment=protocol, seed=seed, initialization=str(backbone),
-        warm_full=False, max_epochs=16, patience=5,
+        warm_full=False, max_epochs=16, patience=5, mixed_precision=False,
     )
-    c3 = dict(name="C3", experiment=protocol, seed=seed, lr=0.0001, max_epochs=32, patience=6)
+    c3 = dict(name="C3", experiment=protocol, seed=seed, lr=0.0001, max_epochs=32,
+              patience=6, mixed_precision=False)
     if protocol == "ablation":
         c2.update(backbone_lr=2e-5, head_lr=2e-4, wd=0.001, pw=positive_weight, gain_aug=0.0)
         c3.update(dropout=0.20, wd=0.001, pw=positive_weight, noise=0.01)
@@ -82,7 +83,7 @@ def fit(dataset, protocol, output, backbone, seeds, epoch_limit=None):
         with torch.inference_mode():
             for ids in np.array_split(test, (len(test) + 127) // 128):
                 batch = np.concatenate([encodings[seq[ids]], aux[ids]], axis=-1)
-                with torch.cuda.amp.autocast(enabled=DEV.type == "cuda"):
+                with torch.cuda.amp.autocast(enabled=DEV.type == "cuda" and config.get("mixed_precision", False)):
                     logits = model(torch.from_numpy(batch).to(DEV))
                 scores.extend(logits.float().sigmoid().cpu().numpy())
         threshold = record["validation"]["threshold"]

@@ -9,13 +9,15 @@ Place the following files in a local directory. Keep all files in the same row o
 | File | Contents |
 | --- | --- |
 | `regions.csv` | One row per candidate region. Required columns are `well_code`, `image_id`, `region_center_depth` (m) and `label_id` (0 for non-lamination, 1 for lamination). The group protocol also requires `source_group_id`. |
-| `patches.npy` | Unsigned 8-bit array of shape `(N, 160, 160, 3)`. The channels are grayscale, dark-line response and bright-line response, in that order. Use the study's prepared candidate-region patches. |
+| `patches.npy` | Unsigned 8-bit array of shape `(N, 360, 360, 3)`. The channels are grayscale, dark-line response and bright-line response, in that order. Use candidate-region patches prepared at the manuscript's 360 × 360 resolution. |
 | `attributes.npy` | Finite array of shape `(N, 96)`. Use the study's standardized Top-96 attributes for ablation and the training-fitted quantile-transformed Top-96 attributes for the selected group refit. |
 | `splits.npz` | Integer vectors `train_indices`, `val_indices`, and `test_indices` using zero-based row positions. Each subset must contain both classes. |
 
 For the group protocol, create `source_group_id` from the study's group assignment. Windows from the same well belong to the same group when they share source rows from the same file and channel or have overlapping depth intervals, including any connections through intermediate windows. Assign entire groups to subsets. Use preprocessing and attribute selection fitted on the training subset for the protocol.
 
-The runner normalizes the three patch channels using the study's fixed mean and standard deviation. It builds 15-position neighborhoods within the same split, well and source window. A sequence position carries a 768-dimensional encoding, a clipped relative depth, a scaled relative position and a validity indicator. At either window edge the nearest available region is repeated and its padding position is marked invalid.
+The loader requires the 360 × 360 prepared patches and does not resize patch files implicitly. The runner converts the patch layout to `(N, 3, 360, 360)` and normalizes the three channels using the study's fixed mean and standard deviation. It builds 15-position neighborhoods within the same split, well and source window. A sequence position carries a 768-dimensional encoding, a clipped relative depth, a scaled relative position and a validity indicator. At either window edge the nearest available region is repeated and its padding position is marked invalid.
+
+The current 360 × 360 training configuration uses float32 computation (`mixed_precision: false`) for both C2 and C3. Validation, embedding extraction and held-out evaluation also use float32 by default.
 
 ## Matched five-seed ablation
 

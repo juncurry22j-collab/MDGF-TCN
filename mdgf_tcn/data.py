@@ -8,6 +8,7 @@ import pandas as pd
 
 
 SUBSETS = ("train", "val", "test")
+PATCH_SIZE = 360
 
 
 @dataclass
@@ -53,8 +54,10 @@ def load_dataset(folder: Path, group_disjoint: bool) -> Dataset:
         if metadata.groupby(["well_code", "image_id"])["source_group_id"].nunique().gt(1).any():
             raise ValueError("A source window belongs to more than one group")
     patches = np.load(folder / "patches.npy", mmap_mode="r", allow_pickle=False)
-    if patches.shape != (n, 160, 160, 3) or patches.dtype != np.uint8:
-        raise ValueError("patches.npy must have shape (N,160,160,3) and dtype uint8")
+    if patches.shape != (n, PATCH_SIZE, PATCH_SIZE, 3) or patches.dtype != np.uint8:
+        raise ValueError(
+            f"patches.npy must have shape (N,{PATCH_SIZE},{PATCH_SIZE},3) and dtype uint8"
+        )
     return Dataset(metadata, labels, patches, attributes, splits)
 
 
